@@ -45,32 +45,32 @@ function set_outputs!(layer::Layer, outputs); layer.cache.outputs = outputs; end
 
 clear_cache!(layer::T where T<:Layer) = clear_cache!(level.cache)
 
-@implement_layer_cache("InputCache", Array{T, N} where {T<:Real, N})
+@implement_layer_cache("InputCache", Array{T, N} where {T<:AbstractFloat, N})
 
 mutable struct Input <: Layer
-    value::Array{T, N} where {T<:Real, N}
-    type::Type{<:Real}
+    value::Array{T, N} where {T<:AbstractFloat, N}
+    type::Type{<:AbstractFloat}
     dims::Tuple{Vararg{Integer, N} where N}
     cache::InputCache
 
-    function Input(type::Type{<:Real} , dims::Tuple{Vararg{Integer, N} where N})
+    function Input(type::Type{<:AbstractFloat} , dims::Tuple{Vararg{Integer, N} where N})
         cache = InputCache()
         cache.outputs = Array{type, length(dims)}(undef, dims)
         new(cache.outputs, type, dims, cache)
     end
 end
 
-function feed!(layer::Input, value::Array{T, N} where {T<:Real, N})
+function feed!(layer::Input, value::Array{T, N} where {T<:AbstractFloat, N})
     layer.value = value
 end
 
-function feed!(feed_dict::Dict{Input, Array{T, N} where {T<:Real, N}})
+function feed!(feed_dict::Dict{Input, Array{T, N} where {T<:AbstractFloat, N}})
     for (layer, value) in pairs(feed_dict)
         layer.value = value
     end
 end
 
-function feed!(feed_pairs::Pair{<:Input, <:Array{<:Real, N} where N}...)
+function feed!(feed_pairs::Pair{<:Input, <:Array{<:AbstractFloat, N} where N}...)
     for (layer, value) in feed_pairs
         layer.value = value
     end
@@ -84,17 +84,17 @@ end
 
 function backward!(layer::Input) end
 
-@implement_layer_cache("Convolution2dCache", Array{<:Real, 3})
+@implement_layer_cache("Convolution2dCache", Array{<:AbstractFloat, 3})
 
 mutable struct Convolution2d <: Layer
     input_layer::T where T<:Layer
-    weights::Array{T, 4} where T<:Real
-    bias::Array{T, 2} where T<:Real
+    weights::Array{T, 4} where T<:AbstractFloat
+    bias::Array{T, 2} where T<:AbstractFloat
     x_stride::Integer
     y_stride::Integer
     mode::String
     trainable::Bool
-    type::Type{<:Real}
+    type::Type{<:AbstractFloat}
     dims::Tuple{Vararg{Integer, N} where N}
     cache::Convolution2dCache
 
@@ -162,10 +162,11 @@ end
 function backward!(layer::Convolution2d)
 end
 
-@implement_layer_cache("ReshapeCache", Array{<:Real, N} where N)
+@implement_layer_cache("ReshapeCache", Array{<:AbstractFloat, N} where N)
 
 mutable struct Reshape <: Layer
     input_layer::T where T<:Layer
+
     dims::Tuple{Vararg{Integer, N} where N}
     cache::ReshapeCache
 
@@ -189,21 +190,24 @@ end
 
 mutable struct Relu <: Layer
     input_layer::T where T<:Layer
+    type::Type{<:AbstractFloat}
+    dims::Tuple{Vararg{Integer, N} where N}
     cache::ReluCache
-
-    Relu(input_layer::T where T<:Layer) = new(input_layer, ReluCache())
+    Relu(input_layer::T where T<:Layer) = new(
+        input_layer, input_layer.type, input_layer.dims, ReluCache())
 end
 
 function forward!(layer::Relu)
-    # TODO: Fix implementation.
-    inputs = input_layer.cache.inputs
+    inputs = get_inputs(layer)
     outputs = Math.relu(inputs)
-    update_cache(layer, inputs, outputs)
+    set_outputs!(layer, outputs)
     return outputs
 end
 
 function backward!(layer::Relu)
 end
+
+# TODO: Implement Dense layer.
 
 # @implement_layer_cache("DenseCache")
 #
