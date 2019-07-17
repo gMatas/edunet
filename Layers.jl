@@ -99,16 +99,16 @@ mutable struct Convolution2d <: Layer
     cache::Convolution2dCache
 
     function Convolution2d(
-            input_layer::T where T<:Layer,
-            filters::Integer,
-            kernel_size::Union{Integer, Tuple{Integer, Integer}};
-            strides::Union{Integer, Tuple{Integer, Integer}} = (1, 1),
-            weights_initializer::Type{T} where T<:Initializer = Initializers.HeUniform,
-            bias_initializer::Type{T} where T<:Initializer = Initializers.Zeros,
-            mode::String = "valid",
-            trainable::Bool = true,
-            rng::AbstractRNG = Random.GLOBAL_RNG
-        )
+        input_layer::T where T<:Layer,
+        filters::Integer,
+        kernel_size::Union{Integer, Tuple{Integer, Integer}};
+        strides::Union{Integer, Tuple{Integer, Integer}} = (1, 1),
+        weights_initializer::Type{T} where T<:Initializer = Initializers.HeUniform,
+        bias_initializer::Type{T} where T<:Initializer = Initializers.Zeros,
+        mode::String = "valid",
+        trainable::Bool = true,
+        rng::AbstractRNG = Random.GLOBAL_RNG
+    )
         input_type = input_layer.type
         input_size = input_layer.dims
 
@@ -166,12 +166,12 @@ end
 
 mutable struct Reshape <: Layer
     input_layer::T where T<:Layer
-
+    type::Type{<:Real}
     dims::Tuple{Vararg{Integer, N} where N}
     cache::ReshapeCache
 
     Reshape(input_layer::T where T<:Layer, dims::Tuple{Vararg{Integer, N} where N}) = new(
-        input_layer, dims, ReshapeCache())
+        input_layer, input_layer.type, dims, ReshapeCache())
 end
 
 function forward!(layer::Reshape)
@@ -193,6 +193,7 @@ mutable struct Relu <: Layer
     type::Type{<:AbstractFloat}
     dims::Tuple{Vararg{Integer, N} where N}
     cache::ReluCache
+
     Relu(input_layer::T where T<:Layer) = new(
         input_layer, input_layer.type, input_layer.dims, ReluCache())
 end
@@ -207,23 +208,40 @@ end
 function backward!(layer::Relu)
 end
 
-# TODO: Implement Dense layer.
+@implement_layer_cache("DenseCache")
 
-# @implement_layer_cache("DenseCache")
-#
-# mutable struct Dense <: Layer
-#     input_layer::T where T<:Layer
-#     cache::DenseCache
-#
-#     Dense(input_layer::T where T<:Layer) = new(input_layer, DenseCache())
-# end
-#
-# function forward!(layer::Dense)
-#     inputs = get_cached_inputs(layer.input_layer)
-#     update_cache(layer)
-# end
-#
-# function backward!(layer::Dense)
-# end
+mutable struct Dense <: Layer
+    input_layer::T where T<:Layer
+    units::Integer
+    weights::Array{T, 4} where T<:AbstractFloat
+    bias::Array{T, 2} where T<:AbstractFloat
+    type::Type{<:AbstractFloat}
+    dims::Tuple{Vararg{Integer, N} where N}
+    cache::DenseCache
+
+    function Dense(
+        input_layer::T where T<:Layer,
+        units::Integer;
+        weights_initializer::Type{<:Initializer} = Initializers.HeUniform,
+        bias_initializer::Type{<:Initializer} = Initializers.Zeros,
+        trainable::Bool,
+        rng::AbstractRNG = Random.GLOBAL_RNG
+    )
+        input_type = input_layer.type
+        input_size = input_layer.dims
+
+
+
+
+        new(input_layer, DenseCache())
+end
+
+function forward!(layer::Dense)
+    inputs = get_cached_inputs(layer.input_layer)
+    update_cache(layer)
+end
+
+function backward!(layer::Dense)
+end
 
 end
