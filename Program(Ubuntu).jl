@@ -79,7 +79,10 @@ relu_4 = Relu(conv_4)
 conv_5 = Convolution2d(relu_4, 16, 3, mode="valid")
 relu_5 = Relu(conv_5)
 
-flat = Reshape(relu_5, (prod(relu_5.dims[1:2]), relu_5.dims[3]))
+flat = Reshape(relu_5, (prod(relu_5.dims),))
+
+dense_1 = Dense(flat, 8)
+relu_6 = Relu(dense_1)
 
 
 

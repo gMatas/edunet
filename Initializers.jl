@@ -18,6 +18,8 @@ using .Math
 
 abstract type Initializer end
 
+function initialize(initializer::T where T<:Initializer); end
+
 mutable struct HeNormal <: Initializer
     type::Type{T} where T<:Number
     dims::Tuple{Vararg{Integer, N} where N}

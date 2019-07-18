@@ -7,7 +7,9 @@ backward!,
 Input,
 Convolution2d,
 Reshape,
-Relu
+Relu,
+Reshape,
+Dense
 
 include("Math.jl")
 include("Utilities.jl")
@@ -116,8 +118,8 @@ mutable struct Convolution2d <: Layer
         y_kernel_size, x_kernel_size = isa(kernel_size, Integer) ?
             (kernel_size, kernel_size) : kernel_size
         kernel_dims = (filters, y_kernel_size, x_kernel_size, input_size[3])
-
         bias_dims = (filters, 1)
+
         weights = initialize(weights_initializer(input_type, kernel_dims), rng)
         bias = initialize(bias_initializer(input_type, bias_dims), rng)
 
@@ -208,13 +210,13 @@ end
 function backward!(layer::Relu)
 end
 
-@implement_layer_cache("DenseCache")
+@implement_layer_cache("DenseCache", Vector{<:AbstractFloat})
 
 mutable struct Dense <: Layer
     input_layer::T where T<:Layer
-    units::Integer
-    weights::Array{T, 4} where T<:AbstractFloat
-    bias::Array{T, 2} where T<:AbstractFloat
+    weights::Matrix{<:AbstractFloat}
+    bias::Vector{<:AbstractFloat}
+    trainable::Bool
     type::Type{<:AbstractFloat}
     dims::Tuple{Vararg{Integer, N} where N}
     cache::DenseCache
@@ -224,21 +226,27 @@ mutable struct Dense <: Layer
         units::Integer;
         weights_initializer::Type{<:Initializer} = Initializers.HeUniform,
         bias_initializer::Type{<:Initializer} = Initializers.Zeros,
-        trainable::Bool,
+        trainable::Bool = true,
         rng::AbstractRNG = Random.GLOBAL_RNG
     )
         input_type = input_layer.type
         input_size = input_layer.dims
 
+        if length(input_size) != 1 && !(length(input_size) == 2 && (input_size[1] == 1 || input_size[2] == 1))
+            throw(DimensionMismatch("Input layer must be 1-D."))
+        end
 
+        weights_dims = (units, input_size...)
+        bias_dims = (units,)
 
+        weights = initialize(weights_initializer(input_type, weights_dims))
+        bias = initialize(weights_initializer(input_type, bias_dims))
 
-        new(input_layer, DenseCache())
+        new(input_layer, weights, bias, trainable, input_type, units, DenseCache())
+    end
 end
 
 function forward!(layer::Dense)
-    inputs = get_cached_inputs(layer.input_layer)
-    update_cache(layer)
 end
 
 function backward!(layer::Dense)
