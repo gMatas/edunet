@@ -41,8 +41,8 @@ end
 # ------------------------------------------------------------------------------
 
 # Images
-smiley_image_filepath = raw"D:\My Work\Computational inteligence\mattcnn\god_damned_smile.bmp"
-frown_image_filepath = raw"D:\My Work\Computational inteligence\mattcnn\god_damned_frown.bmp"
+smiley_image_filepath = raw"D:\My Work\Personal\EduNet\god_damned_smile.bmp"
+frown_image_filepath = raw"D:\My Work\Personal\EduNet\god_damned_frown.bmp"
 
 smiley_image = Images.load(smiley_image_filepath)
 frown_image = Images.load(frown_image_filepath)
@@ -61,17 +61,42 @@ sample_label = labels_batch[i_sample, :]
 
 # ------------------------------------------------------------------------------
 
-input_data_layer = Input(Float32, (20, 20, 3))
-input_label_layer = Input(Float32, (2,))
+input_data = Input(Float32, (4, 1))
+dense_1 = Dense(input_data, 2)
+input_values = permutedims([1.0 1.5 2.0 2.5], [2, 1])
 
-conv_1 = Convolution2d(input_data_layer, 16, 3, mode="valid")
-relu_1 = Relu(conv_1)
-conv_2 = Convolution2d(relu_1, 16, 3, mode="valid")
-relu_2 = Relu(conv_2)
-conv_3 = Convolution2d(relu_2, 16, 3, mode="valid")
-relu_3 = Relu(conv_3)
+feed!(input_data, input_values)
+
+forward!(input_data)
+input_data
+forward!(dense_1)
+dense_1
 
 
+
+
+# input_data_layer = Input(Float32, (20, 20, 3))
+# input_label_layer = Input(Float32, (2,))
+#
+# conv_1 = Convolution2d(input_data_layer, 16, 3, mode="valid")
+# relu_1 = Relu(conv_1)
+#
+# conv_2 = Convolution2d(relu_1, 16, 3, mode="valid")
+# relu_2 = Relu(conv_2)
+#
+# conv_3 = Convolution2d(relu_2, 16, 3, mode="valid")
+# relu_3 = Relu(conv_3)
+#
+# conv_4 = Convolution2d(relu_3, 16, 3, mode="valid")
+# relu_4 = Relu(conv_4)
+#
+# conv_5 = Convolution2d(relu_4, 16, 3, mode="valid")
+# relu_5 = Relu(conv_5)
+#
+# flat = Reshape(relu_5, (prod(relu_5.dims),))
+#
+# dense_1 = Dense(flat, 8)
+# relu_6 = Relu(dense_1)
 
 
 

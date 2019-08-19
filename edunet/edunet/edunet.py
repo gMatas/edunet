@@ -1,0 +1,3 @@
+class EduNet(object):
+    def __init__(self):
+        pass

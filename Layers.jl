@@ -16,6 +16,7 @@ include("Utilities.jl")
 include("Initializers.jl")
 
 using Random
+using LinearAlgebra
 
 using .Math
 using .Initializers
@@ -50,7 +51,7 @@ clear_cache!(layer::T where T<:Layer) = clear_cache!(level.cache)
 @implement_layer_cache("InputCache", Array{T, N} where {T<:AbstractFloat, N})
 
 mutable struct Input <: Layer
-    value::Array{T, N} where {T<:AbstractFloat, N}
+    value::AbstractArray{T, N} where {T<:AbstractFloat, N}
     type::Type{<:AbstractFloat}
     dims::Tuple{Vararg{Integer, N} where N}
     cache::InputCache
@@ -62,19 +63,26 @@ mutable struct Input <: Layer
     end
 end
 
-function feed!(layer::Input, value::Array{T, N} where {T<:AbstractFloat, N})
+function feed!(layer::Input, value::AbstractArray{T, N} where {T<:AbstractFloat, N})
+    # TODO: Finish input-feed size and type checking.
+    if layer.dims != size(value)
+        throw(DimensionMismatch("Given value dimensions must match that of the layer."))
+    end
+    if layer.type != eltype(value)
+        throw(TypeError(:feed!, layer.type, eltype(value)))
+    end
     layer.value = value
 end
 
-function feed!(feed_dict::Dict{Input, Array{T, N} where {T<:AbstractFloat, N}})
+function feed!(feed_dict::Dict{Input, AbstractArray{T, N} where {T<:AbstractFloat, N}})
     for (layer, value) in pairs(feed_dict)
-        layer.value = value
+        feed!(layer, value)
     end
 end
 
-function feed!(feed_pairs::Pair{<:Input, <:Array{<:AbstractFloat, N} where N}...)
+function feed!(feed_pairs::Pair{<:Input, <:AbstractArray{<:AbstractFloat, N} where N}...)
     for (layer, value) in feed_pairs
-        layer.value = value
+        feed!(layer, value)
     end
 end
 
@@ -215,10 +223,10 @@ end
 mutable struct Dense <: Layer
     input_layer::T where T<:Layer
     weights::Matrix{<:AbstractFloat}
-    bias::Vector{<:AbstractFloat}
+    bias::Matrix{<:AbstractFloat}
     trainable::Bool
     type::Type{<:AbstractFloat}
-    dims::Tuple{Vararg{Integer, N} where N}
+    dims::Tuple{Integer, Integer}
     cache::DenseCache
 
     function Dense(
@@ -236,17 +244,23 @@ mutable struct Dense <: Layer
             throw(DimensionMismatch("Input layer must be 1-D."))
         end
 
-        weights_dims = (units, input_size...)
-        bias_dims = (units,)
+        weights_dims = (units, input_size[1])
+        bias_dims = (units, 1)
 
         weights = initialize(weights_initializer(input_type, weights_dims))
         bias = initialize(weights_initializer(input_type, bias_dims))
 
-        new(input_layer, weights, bias, trainable, input_type, units, DenseCache())
+        output_dims = (units, 1)
+
+        new(input_layer, weights, bias, trainable, input_type, output_dims, DenseCache())
     end
 end
 
 function forward!(layer::Dense)
+    inputs = get_inputs(layer)
+    outputs = layer.weights * inputs + layer.bias
+    set_outputs!(layer, outputs)
+    return outputs
 end
 
 function backward!(layer::Dense)
