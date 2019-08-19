@@ -10,3 +10,4 @@ deps/deps.jl
 *.snl
 *.pyproj
 *.pyc
+__pycache__/
