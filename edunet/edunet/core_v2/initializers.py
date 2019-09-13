@@ -1,45 +1,48 @@
 import abc
-from typing import Union, Iterable
+from typing import Union, Iterable, Sequence
 
 import numpy as np
 from numpy import ndarray
 from numpy.random.mtrand import RandomState
 
-import edunet.math as edumath
-from edunet.variable import Variable
+from edunet.core_v2 import Variable
+from edunet.core_v2.math import random_uniform
+from edunet.core_v2.math import random_normal
+from edunet.core_v2.math import he_uniform
+from edunet.core_v2.math import he_normal
 
 
 class Initializer(abc.ABC):
-    def __init__(self, shape, dtype):
+    def __init__(self, shape: Sequence[int], dtype: Union[type, np.dtype]):
         self._shape = shape
         self._dtype = dtype
 
     @abc.abstractmethod
-    def initialize(self, random_state: Union[None, int, ndarray, Iterable, float, RandomState] = None) -> Variable:
+    def initialize(self, random_state: Union[int, ndarray, Iterable, float, RandomState] = None) -> Variable:
         pass
 
 
 class HeNormal(Initializer):
     def initialize(self, random_state=None):
-        return Variable(edumath.he_normal(
+        return Variable(he_normal(
             self._shape,
-            self._shape[0],
+            int(np.prod(self._shape[1:])),
             dtype=self._dtype,
             random_state=random_state))
 
 
 class HeUniform(Initializer):
     def initialize(self, random_state=None):
-        return Variable(edumath.he_uniform(
+        return Variable(he_uniform(
             self._shape,
-            self._shape[0],
+            int(np.prod(self._shape[1:])),
             dtype=self._dtype,
             random_state=random_state))
 
 
 class RandomNormal(Initializer):
     def initialize(self, random_state=None):
-        return Variable(edumath.random_normal(
+        return Variable(random_normal(
             self._shape,
             dtype=self._dtype,
             random_state=random_state))
@@ -47,17 +50,17 @@ class RandomNormal(Initializer):
 
 class RandomUniform(Initializer):
     def initialize(self, random_state=None):
-        return Variable(edumath.random_uniform(
+        return Variable(random_uniform(
             self._shape,
             dtype=self._dtype,
             random_state=random_state))
 
 
 class Ones(Initializer):
-    def initialize(self, random_state=None):
+    def initialize(self, **kwargs):
         return Variable(np.ones(self._shape, self._dtype))
 
 
 class Zeros(Initializer):
-    def initialize(self, random_state=None):
+    def initialize(self, **kwargs):
         return Variable(np.zeros(self._shape, self._dtype))

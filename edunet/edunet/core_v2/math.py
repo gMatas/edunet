@@ -5,6 +5,14 @@ import numpy as np
 from numpy import ndarray
 from numpy.random.mtrand import RandomState
 
+from edunet.core_v2.utilities import isscalar
+
+
+def matmul(x1: ndarray, x2: ndarray, *args, **kwargs) -> ndarray:
+    if isscalar(x1) or isscalar(x2):
+        return x1 * x2
+    return np.matmul(x1, x2, *args, **kwargs)
+
 
 def random_uniform(
         shape: Sequence[int],
@@ -33,17 +41,6 @@ def random_uniform(
     return np.array(y, dtype)
 
 
-#function random_uniform(type, dims; minval=0, maxval=nothing, rng=Random.GLOBAL_RNG)
-#    if isnothing(maxval)
-#        maxval = type <: AbstractFloat ? 1.0 : typemax(type)
-#    else
-#        maxval = convert(type, maxval)
-#    end
-
-#    Random.rand(rng, type, dims...) * (maxval - minval) .+ minval
-#end
-
-
 def random_normal(
         shape: Sequence[int],
         mu: Union[int, float] = 0,
@@ -59,13 +56,6 @@ def random_normal(
     return np.array(y, dtype)
 
 
-#function random_normal(type, dims; mu=0, sigma=1.0, rng=Random.GLOBAL_RNG)
-#    y = Random.randn(rng, type, dims...)
-#    convert(Array{type}, y * sigma .- (mean(y) - mu))
-#    type.(y * sigma .- (mean(y) - mu))
-#end
-
-
 def he_uniform(
         shape: Sequence[int],
         n: int,
@@ -77,12 +67,6 @@ def he_uniform(
     y = random_uniform(shape, minval, maxval, dtype, random_state)
     y *= math.sqrt(2.0 / n)
     return y
-
-
-#function he_uniform(type, dims, n; minval=0, maxval=nothing, rng=Random.GLOBAL_RNG)
-#    y = random_uniform(type, dims, minval=minval, maxval=maxval, rng=rng)
-#    type.(y * sqrt(2 / n))
-#end
 
 
 def he_normal(
@@ -98,70 +82,33 @@ def he_normal(
     return y
 
 
-#function he_normal(type, dims, n; mu=0, sigma=1.0, rng=Random.GLOBAL_RNG)
-#    y = random_normal(type, dims, mu=mu, sigma=sigma, rng=rng)
-#    type.(y * sqrt(2 / n))
-#end
-
-
 def relu(x: ndarray):
     y = x.copy()
     y[x < 0] = 0
     return y
 
 
-#function relu(x::Array{T, N} where {T <: AbstractFloat, N})
-#    y = copy(x)
-#    y[x .< 0] .= 0
-#    return y
-#end
-
-
 def relu_prime(x: ndarray, gradients: ndarray):
     indices = x > 0
-    dy = np.zeros(gradients.size, gradients.dtype)
+    dy = np.zeros(gradients.shape, gradients.dtype)
     dy[indices] = gradients[indices]
     return dy
 
 
-#function relu_prime(
-#    x::Array{T, N} where {T <: AbstractFloat, N},
-#    gradients::Array{T, N} where {T <: AbstractFloat, N}
-#)
-#    indices = x .> 0
-#    dy = zeros(typeof(x), size(gradients))
-#    dy[indices] .= gradients[indices]
-#    return dy
-#end
-
-
 def sigmoid(x: ndarray):
-    y = 1. / (1. + np.exp(-(x - x.max())))
+    y = np.empty(x.shape, x.dtype)
+    pos_elements = (x >= 0)
+    y[pos_elements] = 1. / (1. + np.exp(-x[pos_elements]))
+    neg_elements = ~pos_elements
+    z = np.exp(x[neg_elements])
+    y[neg_elements] = z / (1. + z)
     return y
 
 
-#function sigmoid(x::Array{T, N} where {T <: AbstractFloat, N})
-#    y = 1 ./ (1 + exp(-(x .- max(x...))))
-#    return y
-#end
-
-
 def sigmoid_prime(x: ndarray, gradients: ndarray):
-    exp_norm_x = np.exp(-(x - x.max()))
-    dydx = exp_norm_x / ((1. + exp_norm_x) ** 2.)
-    dx = np.matmul(gradients, dydx)
+    y = sigmoid(x)
+    dx = y * (1 - y) * gradients
     return dx
-
-
-#function sigmoid_prime(
-#    x::Array{T, N} where {T <: AbstractFloat, N},
-#    gradients::Array{T, N} where {T <: AbstractFloat, N}
-#)
-#    norm_x = x .- max(x...)
-#    dydx = exp(-norm_x) / ((1 .+ exp(-norm_x)) .^ 2)
-#    dx = gradients * dydx
-#    return dx
-#end
 
 
 def softmax(x: ndarray):
@@ -199,45 +146,21 @@ def squared_distance(x: ndarray, y: ndarray):
     assert x.ndim == 1, 'Input array must be of rank 1 (vector).'
     assert x.shape == y.shape, 'Input vectors dimensions does not match.'
 
-    delta = (x - y) ** 2.
-    return delta
-
-
-#function square_distance(
-#    x::Vector{T} where T <: AbstractFloat,
-#    y::Vector{T} where T <: AbstractFloat
-#)
-#    if size(x) != size(y)
-#        throw(DimensionMismatch("Input vectors dimensions does not match."))
-#    end
-
-#    e = (x - y) .^ 2
-#    return e
-#end
+    e = (x - y) ** 2.
+    return e
 
 
 def squared_distance_prime(x: ndarray, y: ndarray, gradients: ndarray) -> Tuple[ndarray, ndarray]:
     assert x.ndim == 1, 'Input array must be of rank 1 (vector).'
     assert x.shape == y.shape, 'Input vectors dimensions does not match.'
+    assert gradients.ndim == 1, 'Gradient array must be of rank 1 (vector).'
+    assert x.size == gradients.size, \
+        'Gradient array must have the same number of elements as each of the input vectors.'
 
-    dydx = (2. * (x - y)).T
-    dx = np.matmul(gradients, dydx)
-    return dx, dx
-
-
-#function square_distance_prime(
-#    x::Vector{T} where T <: AbstractFloat,
-#    y::Vector{T} where T <: AbstractFloat,
-#    gradients::Vector{T} where T <: AbstractFloat
-#)
-#    if size(x) != size(y)
-#        throw(DimensionMismatch("Input vectors dimensions does not match."))
-#    end
-
-#    dydx = 2 .* (x - y)
-#    dx = gradients * dydx'
-#    return dx
-#end
+    de = 2. * (x - y)
+    dx = de * gradients
+    dy = -dx
+    return dx, dy
 
 
 def cross_entropy(x: ndarray, y: ndarray):
@@ -268,6 +191,9 @@ def cross_entropy(x: ndarray, y: ndarray):
 def cross_entropy_prime(x: ndarray, y: ndarray, gradients: ndarray):
     assert x.ndim == 1, 'Input array must be of rank 1 (vector).'
     assert x.shape == y.shape, 'Input vectors dimensions does not match.'
+    assert gradients.ndim == 1, 'Gradient array must be of rank 1 (vector).'
+    assert x.size == gradients.size, \
+        'Gradient array must have the same number of elements as each of the input vectors.'
 
     dydx = x - y
     dx = np.matmul(gradients, dydx)

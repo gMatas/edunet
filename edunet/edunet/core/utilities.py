@@ -1,4 +1,4 @@
-from typing import Sequence, Union, Tuple
+from typing import Sequence, Union, Tuple, Iterable
 
 import numpy as np
 from numpy import ndarray
@@ -6,7 +6,9 @@ from scipy.signal import convolve2d
 
 
 def isscalar(a: ndarray) -> bool:
-    return max(a.shape) == 1
+    if len(a.shape) > 0:
+        return max(a.shape) == 1
+    return True
 
 
 def isvector(a: ndarray):
