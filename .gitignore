@@ -1,0 +1,8 @@
+# IDE related files and directories.
+.idea/
+.vs/
+*.snl
+
+# Python related files and directories.
+*.pyc
+__pycache__/
