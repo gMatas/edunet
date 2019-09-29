@@ -6,7 +6,7 @@ with open('README.md', 'r') as fs:
 
 setup(
     name='edunet',
-    version='0.0.0',
+    version='v0.1-alpha',
     author='Matas Gumbinas',
     author_email='matas.gumbinas@gmail.com',
     description='Edunet. Numpy based educational neural networks modeling framework - from scratch.',
