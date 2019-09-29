@@ -5,7 +5,26 @@ import numpy as np
 from numpy import ndarray
 from numpy.random.mtrand import RandomState
 
-from edunet.core_v2.utilities import isscalar
+from edunet.core.utilities import isscalar
+
+
+__all__ = [
+    'matmul',
+    'random_uniform',
+    'random_normal',
+    'he_uniform',
+    'he_normal',
+    'relu',
+    'relu_prime',
+    'sigmoid',
+    'sigmoid_prime',
+    'softargmax',
+    'softargmax_prime',
+    'squared_distance',
+    'squared_distance_prime',
+    'cross_entropy',
+    'cross_entropy_prime',
+]
 
 
 def matmul(x1: ndarray, x2: ndarray, *args, **kwargs) -> ndarray:

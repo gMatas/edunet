@@ -5,11 +5,23 @@ import numpy as np
 from numpy import ndarray
 from numpy.random.mtrand import RandomState
 
-from edunet.core_v2 import Variable
-from edunet.core_v2.math import random_uniform
-from edunet.core_v2.math import random_normal
-from edunet.core_v2.math import he_uniform
-from edunet.core_v2.math import he_normal
+from edunet.core import Variable
+from edunet.core.math import random_uniform
+from edunet.core.math import random_normal
+from edunet.core.math import he_uniform
+from edunet.core.math import he_normal
+
+
+__all__ = [
+    'Initializer',
+    'HeNormal',
+    'HeUniform',
+    'RandomNormal',
+    'RandomUniform',
+    'Ones',
+    'Zeros',
+    'Full',
+]
 
 
 class Initializer(abc.ABC):

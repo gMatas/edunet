@@ -3,7 +3,8 @@ from typing import Dict
 import numpy as np
 
 import edunet as net
-from edunet import Operation, Variable
+from edunet.core import Operation
+from edunet.core import Variable
 
 
 EPSILON = 1e-6
@@ -61,20 +62,9 @@ def forward_pass(layers: Dict[str, Operation]):
     layers['reduce_sum'].run()
 
 
-def backward_pass(layers: Dict[str, Operation]):
-    layers['reduce_sum'].compute_gradients()
-    layers['loss'].compute_gradients(layers['reduce_sum'].grads_dict[layers['loss'].output])
-    layers['softmax'].compute_gradients(layers['loss'].grads_dict[layers['softmax'].output])
-    layers['dense_2'].compute_gradients(layers['softmax'].grads_dict[layers['dense_2'].output])
-    layers['relu'].compute_gradients(layers['dense_2'].grads_dict[layers['relu'].output])
-    layers['dense_1'].compute_gradients(layers['relu'].grads_dict[layers['dense_1'].output])
-    layers['flatten'].compute_gradients(layers['dense_1'].grads_dict[layers['flatten'].output])
-    layers['pool_1'].compute_gradients(layers['flatten'].grads_dict[layers['pool_1'].output])
-    layers['relu_1'].compute_gradients(layers['pool_1'].grads_dict[layers['relu_1'].output])
-    layers['conv_1'].compute_gradients(layers['relu_1'].grads_dict[layers['conv_1'].output])
-
-    layers['input_labels'].compute_gradients()
-    layers['input_data'].compute_gradients()
+def backward_pass(layers: Dict[str, Operation], final_op_name: str, op_name: str):
+    layers['gradients'] = net.Gradients(layers[final_op_name], [layers[op_name]])
+    layers['gradients'].run()
 
 
 def compute_explicit_gradients(layers: Dict[str, Operation], final_op_name: str, variable: Variable) -> np.ndarray:
@@ -112,8 +102,8 @@ variable = explicit_model['input_data'].output
 num_grads = compute_explicit_gradients(explicit_model, 'reduce_sum', variable)
 
 forward_pass(implicit_model)
-backward_pass(implicit_model)
-grads = implicit_model['conv_1'].grads_dict[implicit_model['input_data'].output].values
+backward_pass(implicit_model, 'reduce_sum', 'conv_1')
+grads = implicit_model['gradients'].output.values[0][implicit_model['input_data'].output].values
 
 print(num_grads.shape)
 print(grads.shape)

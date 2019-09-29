@@ -5,6 +5,14 @@ import numpy as np
 from numpy import ndarray
 
 
+__all__ = [
+    'Variable',
+    'Operation',
+    'Graph',
+    'Flow',
+]
+
+
 class Variable(object):
     def __init__(self, values: ndarray = None, shape: Sequence[int] = None, dtype: Union[type, np.dtype] = None):
         if values is None:
@@ -90,117 +98,82 @@ class Operation(abc.ABC):
         pass
 
 
-# class AbstractGraph(abc.ABC):
-#
-#     @abc.abstractmethod
-#     def get_ops(self) -> Sequence[Operation]:
-#         pass
-#
-#
-# class FrozenGraph(AbstractGraph):
-#     def __init__(self, ordered_ops: Iterable[Operation]):
-#         self.__ops = tuple(ordered_ops)
-#
-#     def get_ops(self) -> Tuple[Operation]:
-#         return self.__ops
-#
-#
-# class FlowGraph(AbstractGraph):
-#     def __init__(self, ops: Iterable[Operation] = None):
-#         self.__ops: Set[Operation] = set() if ops is None else set(ops)
-#
-#     def get_ops(self) -> List[Operation]:
-#         return self.sorted()
-#
-#     def add(self, op: Operation) -> Operation:
-#         self.__ops.add(op)
-#         return op
-#
-#     def extend(self, ops: Iterable[Operation]):
-#         self.__ops.update(ops)
-#
-#     def remove(self, op: Operation):
-#         self.__ops.remove(op)
-#
-#     def contains(self, op: Operation) -> bool:
-#         return op in self.__ops
-#
-#     def sorted(self) -> List[Operation]:
-#         sorted_ops = list()
-#         used_ops = set()
-#
-#         def __sort(ops: List[Operation]):
-#             for op in ops:
-#                 if op in used_ops:
-#                     continue
-#                 if len(op.inputs) > 0:
-#                     __sort(op.inputs)
-#                 sorted_ops.append(op)
-#                 used_ops.add(op)
-#
-#         __sort(list(self.__ops))
-#         return sorted_ops
-#
-#     def freeze(self) -> FrozenGraph:
-#         ops = self.sorted()
-#         frozen_graph = FrozenGraph(ops)
-#         return frozen_graph
-#
-#
-# class FlowControl(object):
-#     def __init__(self, graph: AbstractGraph = None):
-#         self.__graph = graph
-#
-#     def run_forward(self):
-#         for op in self.__graph.get_ops():
-#             op.forward()
-#
-#     def run_backward(self):
-#         flow_map: Dict[Operation, Operation] = dict()
-#         for op in self.__graph.get_ops()[::-1]:
-#             gradients = None
-#             if op in flow_map:
-#                 next_op = flow_map[op]
-#                 gradients = next_op.grads_dict[op.outputs]
-#
-#             op.backward(gradients)
-#
-#             inputs_map = dict.fromkeys(op.inputs, op)
-#             flow_map.update(inputs_map)
-#
-#     def run(
-#             self,
-#             outputs: List[Operation] = None,
-#             feed_dict: Dict[Input, ndarray] = None,
-#             backprop=False,
-#     ) -> Optional[List[Optional[ndarray]]]:
-#         if feed_dict is not None:
-#             feed_pairs(feed_dict)
-#
-#         self.run_forward()
-#
-#         if backprop:
-#             self.run_backward()
-#
-#         if outputs:
-#             return [op.outputs.values for op in outputs]
-#
-#     def feed(self, feed_dict: Dict[Operation, ndarray]):
-#         feed_set = set(feed_dict.keys())
-#         graph_ops_set = set(self.__graph.get_ops())
-#
-#         # Handle operations that are not part of the graph.
-#         bad_ops = feed_set.difference(graph_ops_set)
-#         if len(bad_ops) > 0:
-#             raise AssertionError('Operations %s are not part of the graph.' % (str(bad_ops)))
-#
-#         # Handle input operations that are unfed.
-#         missing_ops = graph_ops_set.difference(feed_set)
-#         missing_ops = [op for op in missing_ops if type(op) is Input]
-#         if len(missing_ops) > 0:
-#             raise AssertionError('Input operations %s are missing from the `feed_dict`.' % (str(missing_ops)))
-#
-#         for op, values in feed_dict.items():
-#             if not isinstance(op, Input):
-#                 raise TypeError('Feed dictionary key operations must be Input class instances.')
-#             op.feed(values)
+from edunet.core.ops_utils import collect_ops, sort_ops
+
+
+class Graph(object):
+    def __init__(self, ops: Iterable[Operation] = None):
+        self.__ops: Set[Operation] = set() if ops is None else set(ops)
+
+    def __iter__(self):
+        return iter(self.__ops)
+
+    def add(self, op: Operation) -> Operation:
+        self.__ops.add(op)
+        return op
+
+    def extend(self, ops: Iterable[Operation]):
+        self.__ops.update(ops)
+
+    def remove(self, op: Operation):
+        self.__ops.remove(op)
+
+    def contains(self, op: Operation) -> bool:
+        return op in self.__ops
+
+    def get_ops(self) -> List[Operation]:
+        return list(self.__ops)
+
+    def get_ordered_ops(self) -> List[Operation]:
+        return sort_ops(self.__ops)
+
+
+from edunet.core.ops import Input
+
+
+class Flow(object):
+    def __init__(self, graph: Graph = None):
+        self.__graph = graph
+
+    @property
+    def graph(self):
+        return self.__graph
+
+    def run(
+            self,
+            ops: List[Operation],
+            feed_dict: Dict[Operation, ndarray] = None,
+    ) -> Optional[List[Optional[ndarray]]]:
+        # Collect operations that must run before the specified operations do.
+        running_ops_set = set()
+        for op in ops:
+            if op not in running_ops_set:
+                running_ops_set.update(collect_ops(op))
+
+        feed_dict = dict() if feed_dict is None else feed_dict
+        feed_set = set(feed_dict.keys())
+
+        # Handle operations that are not part of the graph.
+        bad_ops = feed_set.difference(running_ops_set)
+        if len(bad_ops) > 0:
+            raise ValueError('Operations %s are not part of the graph.' % (str(list(bad_ops))))
+
+        # Handle input operations that are unfed.
+        missing_ops = running_ops_set.difference(feed_set)
+        missing_ops = [op for op in missing_ops if type(op) is Input]
+        if len(missing_ops) > 0:
+            raise ValueError('Input operations %s are missing from the `feed_dict`.' % (str(missing_ops)))
+
+        # Feed all input operations with the given values.
+        for op, values in feed_dict.items():
+            if not isinstance(op, Input):
+                raise TypeError('Feed dictionary key operations must be an Input class instances.')
+            op.feed(values)
+
+        # Run topologically sorted operations.
+        for op in sort_ops(running_ops_set):
+            op.run()
+
+        # Extract and return specified outputs values.
+        outputs = [op.output.values for op in ops]
+        return outputs
