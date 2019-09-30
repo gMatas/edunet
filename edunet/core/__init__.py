@@ -154,7 +154,7 @@ class Flow(object):
         feed_set = set(feed_dict.keys())
 
         # Handle operations that are not part of the graph.
-        bad_ops = feed_set.difference(running_ops_set)
+        bad_ops = feed_set.difference(ops)
         if len(bad_ops) > 0:
             raise ValueError('Operations %s are not part of the graph.' % (str(list(bad_ops))))
 
@@ -166,6 +166,8 @@ class Flow(object):
 
         # Feed all input operations with the given values.
         for op, values in feed_dict.items():
+            if op not in running_ops_set:
+                continue
             if not isinstance(op, Input):
                 raise TypeError('Feed dictionary key operations must be an Input class instances.')
             op.feed(values)
