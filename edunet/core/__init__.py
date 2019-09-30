@@ -154,7 +154,7 @@ class Flow(object):
         feed_set = set(feed_dict.keys())
 
         # Handle operations that are not part of the graph.
-        bad_ops = [op for op in feed_set if op not in set(ops)]
+        bad_ops = [op for op in feed_set if not self.__graph.contains(op)]
         if len(bad_ops) > 0:
             raise ValueError('Operations %s are not part of the graph.' % (str(list(bad_ops))))
 
