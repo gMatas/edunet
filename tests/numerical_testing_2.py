@@ -30,7 +30,7 @@ def build_model(layers: Dict[str, Operation]):
     layers['pool_1'] = net.AveragePool2D(layers['relu_1'], 2, mode='valid')
     layers['flatten'] = net.Flatten(layers['pool_1'])
     layers['dense_1'] = net.Dense(layers['flatten'], 5, random_state=random_state)
-    layers['relu'] = net.Relu(layers['dense_1'])
+    layers['relu'] = net.Relu6(layers['dense_1'])
     layers['dense_2'] = net.Dense(layers['relu'], 3, random_state=random_state)
     layers['softmax'] = net.SoftArgMax(layers['dense_2'], 1)
     layers['loss'] = net.CrossEntropy(layers['softmax'], layers['input_labels'], 1)

@@ -114,6 +114,20 @@ def relu_prime(x: ndarray, gradients: ndarray):
     return dy
 
 
+def relu6(x: ndarray) -> ndarray:
+    y = x.copy()
+    y[x < 0] = 0
+    y[x > 6] = 6
+    return y
+
+
+def relu6_prime(x: ndarray, gradients: ndarray) -> ndarray:
+    indices = x > 0
+    dy = np.zeros(gradients.shape, gradients.dtype)
+    dy[indices] = gradients[indices]
+    return dy
+
+
 def sigmoid(x: ndarray):
     y = np.empty(x.shape, x.dtype)
     pos_elements = (x >= 0)

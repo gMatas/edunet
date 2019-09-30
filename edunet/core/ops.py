@@ -1,11 +1,11 @@
-from typing import Tuple, Sequence, Union, Type, Iterable
+from typing import Tuple, Sequence, Union, Type, Iterable, List
 
 import numpy as np
 from numpy import ndarray
 from numpy.random.mtrand import RandomState
 
 from edunet.core import Variable, Operation
-from edunet.core.math import matmul, cross_entropy, cross_entropy_prime
+from edunet.core.math import matmul, cross_entropy, cross_entropy_prime, relu6, relu6_prime
 from edunet.core.math import sigmoid_prime, sigmoid
 from edunet.core.math import softargmax, softargmax_prime
 from edunet.core.math import squared_distance, squared_distance_prime
@@ -31,6 +31,7 @@ __all__ = [
     'Reshape',
     'Flatten',
     'Relu',
+    'Relu6',
     'Sigmoid',
     'SoftArgMax',
 ]
@@ -566,12 +567,8 @@ class Flatten(Reshape):
 
 class Relu(Operation):
     def __init__(self, input_op: Operation, name: str = None):
-        inputs = [input_op]
-        var_list = []
-
         name = self.__class__.__name__ if name is None else name
-
-        super().__init__(inputs, var_list, input_op.output.shape, input_op.output.dtype, name)
+        super().__init__([input_op], list(), input_op.output.shape, input_op.output.dtype, name)
         self.__input_op = input_op
 
     def run(self):
@@ -581,6 +578,22 @@ class Relu(Operation):
     def compute_gradients(self, gradients: Variable = None):
         grads = np.ones(self.output.shape, self.output.dtype) if gradients is None else gradients.values
         dx = relu_prime(self.__input_op.output.values, grads)
+        self.grads_dict[self.__input_op.output] = Variable(dx)
+
+
+class Relu6(Operation):
+    def __init__(self, input_op: Operation, name: str = None):
+        name = self.__class__.__name__ if name is None else name
+        super().__init__([input_op], list(), input_op.output.shape, input_op.output.dtype, name)
+        self.__input_op = input_op
+
+    def run(self):
+        y = relu6(self.__input_op.output.values)
+        self.output.set_values(y)
+
+    def compute_gradients(self, gradients: Variable = None):
+        grads = np.ones(self.output.shape, self.output.dtype) if gradients is None else gradients.values
+        dx = relu6_prime(self.__input_op.output.values, grads)
         self.grads_dict[self.__input_op.output] = Variable(dx)
 
 
