@@ -122,7 +122,7 @@ def relu6(x: ndarray) -> ndarray:
 
 
 def relu6_prime(x: ndarray, gradients: ndarray) -> ndarray:
-    indices = x > 0
+    indices = ((x > 0) & (x < 6))
     dy = np.zeros(gradients.shape, gradients.dtype)
     dy[indices] = gradients[indices]
     return dy
