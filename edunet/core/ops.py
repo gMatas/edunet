@@ -5,7 +5,8 @@ from numpy import ndarray
 from numpy.random.mtrand import RandomState
 
 from edunet.core import Variable, Operation
-from edunet.core.math import matmul, cross_entropy, cross_entropy_prime, relu6, relu6_prime
+from edunet.core.math import matmul, cross_entropy, cross_entropy_prime, relu6, relu6_prime, \
+    softargmax_cross_entropy_with_logits, softargmax_cross_entropy_with_logits_prime
 from edunet.core.math import sigmoid_prime, sigmoid
 from edunet.core.math import softargmax, softargmax_prime
 from edunet.core.math import squared_distance, squared_distance_prime
@@ -27,6 +28,7 @@ __all__ = [
     'Dense',
     'SquaredDistance',
     'CrossEntropy',
+    'SoftargmaxCrossEntropyWithLogits',
     'ReduceSum',
     'Reshape',
     'Flatten',
@@ -479,8 +481,35 @@ class CrossEntropy(Operation):
     def compute_gradients(self, gradients: Variable = None):
         grads = np.ones(self.output.shape, self.output.dtype) if gradients is None else gradients.values
         dx, dy = cross_entropy_prime(self.__x.output.values, self.__y.output.values, self.__axis, grads)
+
         self.grads_dict[self.__x.output] = Variable(dx)
         self.grads_dict[self.__y.output] = Variable(dy)
+
+
+class SoftargmaxCrossEntropyWithLogits(Operation):
+    def __init__(self, labels: Operation, logits: Operation, axis: int = 1, name: str = None):
+        assert logits.output.shape == labels.output.shape, 'Logits and labels shapes must match.'
+        assert logits.output.dtype == labels.output.dtype, 'Logits and labels dtypes must match.'
+
+        output_shape = list(logits.output.shape)
+        output_shape[axis] = 1
+
+        super().__init__([labels, logits], list(), output_shape, labels.output.dtype, name)
+        self.__labels = labels
+        self.__logits = logits
+        self.__axis = axis
+
+    def run(self):
+        ce = softargmax_cross_entropy_with_logits(self.__labels.output.values, self.__logits.output.values, self.__axis)
+        self.output.set_values(ce)
+
+    def compute_gradients(self, gradients: Variable = None):
+        grads = np.ones(self.output.shape, self.output.dtype) if gradients is None else gradients.values
+        d_labels, d_logits = softargmax_cross_entropy_with_logits_prime(
+            self.__labels.output.values, self.__logits.output.values, self.__axis, grads)
+
+        self.grads_dict[self.__labels.output] = Variable(d_labels)
+        self.grads_dict[self.__logits.output] = Variable(d_logits)
 
 
 class ReduceSum(Operation):

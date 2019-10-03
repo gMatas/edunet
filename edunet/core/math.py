@@ -180,7 +180,7 @@ def squared_distance_prime(x: ndarray, y: ndarray, gradients: ndarray) -> Tuple[
 def cross_entropy(x: ndarray, y: ndarray, axis: int):
     assert x.shape == y.shape, 'Input arrays dimensions does not match.'
 
-    e = -np.sum((y * np.log(x)), axis, keepdims=True)
+    e = -np.sum(np.where(y == 0, 0, y * np.log(x)), axis, keepdims=True)
     return e
 
 
@@ -190,6 +190,20 @@ def cross_entropy_prime(x: ndarray, y: ndarray, axis: int, gradients: ndarray):
     y_shape[axis] = 1
     assert tuple(y_shape) == gradients.shape, 'Gradients array shape mismatch.'
 
-    dx = (-y / x) * gradients
+    dx = np.where(y == 0, 0, -y / x) * gradients
     dy = -np.log(x) * gradients
     return dx, dy
+
+
+def softargmax_cross_entropy_with_logits(labels: ndarray, logits: ndarray, axis: int):
+    s = softargmax(logits, axis)
+    ce = cross_entropy(np.where(s == 0, s + np.finfo(s.dtype).tiny, s), labels, axis)
+    return ce
+
+
+def softargmax_cross_entropy_with_logits_prime(labels: ndarray, logits: ndarray, axis: int, gradients: ndarray):
+    s = softargmax(logits, axis)
+
+    d_labels = -np.log(np.where(s == 0, s + np.finfo(s.dtype).tiny, s)) * gradients
+    d_logits = (s - labels) * gradients
+    return d_labels, d_logits
