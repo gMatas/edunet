@@ -1,6 +1,8 @@
 # IDE related files and directories.
 .idea/
+.ipynb_checkpoints/
 .vs/
+.vscode/
 *.snl
 
 # Python related files and directories.

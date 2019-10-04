@@ -1,17 +1,19 @@
-from typing import Tuple, Sequence, Union, Type, Iterable, List
+from typing import Tuple, Sequence, Union, Type, Iterable, List, Dict
 
 import numpy as np
 from numpy import ndarray
 from numpy.random.mtrand import RandomState
 
 from edunet.core import Variable, Operation
-from edunet.core.math import matmul, cross_entropy, cross_entropy_prime, relu6, relu6_prime, \
-    softargmax_cross_entropy_with_logits, softargmax_cross_entropy_with_logits_prime
+from edunet.core.ops_utils import collect_ops
+from edunet.core.math import matmul
+from edunet.core.math import cross_entropy, cross_entropy_prime, relu6, relu6_prime
+from edunet.core.math import softargmax_cross_entropy_with_logits, softargmax_cross_entropy_with_logits_prime
 from edunet.core.math import sigmoid_prime, sigmoid
 from edunet.core.math import softargmax, softargmax_prime
 from edunet.core.math import squared_distance, squared_distance_prime
 from edunet.core.math import relu, relu_prime
-from edunet.core.ops_utils import collect_ops
+from edunet.core.math import relu6, relu6_prime
 from edunet.core.utilities import compute_padding_size_2d, apply_padding_2d, strip_padding_2d
 from edunet.core.utilities import compute_window_slide_size_2d, window_slide_2d
 from edunet.core.utilities import dilate_map_2d
@@ -21,6 +23,7 @@ from edunet.core.initializers import Initializer, HeNormal, Zeros, Full
 __all__ = [
     'Gradients',
     'GradientDescentOptimizer',
+    'MomentumOptimizer',
     'Input',
     'DefaultInput',
     'Convolution2D',
@@ -131,6 +134,83 @@ class GradientDescentOptimizer(object):
 
     def maximize(self, input_op: Operation) -> Maximizer:
         return GradientDescentOptimizer.Maximizer(input_op, self.__learning_rate)
+
+
+class MomentumOptimizer(object):
+    class _Optimizer(Operation):
+        def __init__(self, input_op: Operation, learning_rate: Union[int, float], gamma: Union[int, float], name: str):
+            super(MomentumOptimizer._Optimizer, self).__init__(
+                [input_op], list(), input_op.output.shape, input_op.output.dtype, name)
+            self.__input_layer = input_op
+            self.__learning_rate = learning_rate
+            self.__gamma = gamma
+
+            self._trainable_ops = [op for op in collect_ops(input_op) if len(op.var_list) > 0]
+            self._gradients_op = Gradients(input_op, self._trainable_ops)
+
+            self.__augmented_gradients: List[ndarray] = None
+
+        def run(self):
+            self._gradients_op.run()
+
+            # Initialize augmented gradients arrays for each computed gradients 
+            # array, only if they were not initialized yet.
+            if self.__augmented_gradients is None:
+                self.__augmented_gradients = [
+                    np.zeros_like(grads_dict[op_var].values)
+                    for op, grads_dict in zip(self._trainable_ops, self._gradients_op.output.values)
+                    for op_var in op.var_list
+                    if op_var in grads_dict
+                ]
+
+            aug_grads_iterator = iter(self.__augmented_gradients)
+            for op, grads_dict in zip(self._trainable_ops, self._gradients_op.output.values):
+                for op_var in op.var_list:
+                    if op_var not in grads_dict:
+                        continue
+
+                    grads_var: Variable = grads_dict[op_var]
+
+                    aug_grads = next(aug_grads_iterator)
+                    aug_grads *= self.__gamma
+                    aug_grads += self.__learning_rate * grads_var.values
+
+                    updated_values = np.mean(self._optimization_operator(
+                        op_var.values, aug_grads), 0)
+
+                    op_var.set_values(updated_values)
+
+        def compute_gradients(self, gradients: Variable = None):
+            self._gradients_op.compute_gradients()
+
+        def _optimization_operator(self, a, b) -> ndarray:
+            raise NotImplementedError('Optimization operator function must be override by inheritor classes.')
+
+    class Minimizer(_Optimizer):
+        def __init__(self, input_op: Operation, learning_rate: Union[int, float], gamma: Union[int, float], name: str = None):
+            name = self.__class__.__name__ if name is None else name
+            super(MomentumOptimizer.Minimizer, self).__init__(input_op, learning_rate, gamma, name)
+
+        def _optimization_operator(self, a, b):
+            return a - b
+
+    class Maximizer(_Optimizer):
+        def __init__(self, input_op: Operation, learning_rate: Union[int, float], gamma: Union[int, float], name: str = None):
+            name = self.__class__.__name__ if name is None else name
+            super(MomentumOptimizer.Maximizer, self).__init__(input_op, learning_rate, gamma, name)
+
+        def _optimization_operator(self, a, b):
+            return a + b
+    
+    def __init__(self, learning_rate: float, gamma: float):
+        self.__learning_rate = learning_rate
+        self.__gamma = gamma
+
+    def minimize(self, input_op: Operation) -> Minimizer:
+        return MomentumOptimizer.Minimizer(input_op, self.__learning_rate, self.__gamma)
+
+    def maximize(self, input_op: Operation) -> Maximizer:
+        return MomentumOptimizer.Maximizer(input_op, self.__learning_rate, self.__gamma)
 
 
 class Input(Operation):
