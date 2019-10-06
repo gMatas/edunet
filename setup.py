@@ -9,10 +9,11 @@ setup(
     version='1.3.0-alpha.0',
     author='Matas Gumbinas',
     author_email='matas.gumbinas@gmail.com',
-    description='Edunet. Numpy based educational neural networks modeling framework - from scratch.',
+    description='Numpy based educational neural networks modeling framework - from scratch.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='',
+    license='MIT',
+    url='https://github.com/gMatas/edunet',
     packages=find_packages(),
     python_requires='>=3.6',
     install_requires=[
