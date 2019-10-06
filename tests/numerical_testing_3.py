@@ -32,8 +32,7 @@ def build_model(layers: Dict[str, Operation]):
     layers['dense_1'] = net.Dense(layers['flatten'], 5, random_state=random_state)
     layers['relu'] = net.Relu6(layers['dense_1'])
     layers['dense_2'] = net.Dense(layers['relu'], 3, random_state=random_state)
-    layers['softmax'] = net.SoftArgMax(layers['dense_2'], 1)
-    layers['loss'] = net.CrossEntropy(layers['softmax'], layers['input_labels'], 1)
+    layers['loss'] = net.SoftargmaxCrossEntropyWithLogits(layers['input_labels'], layers['dense_2'], 1)
     layers['reduce_sum'] = net.ReduceSum(layers['loss'], 0)
 
 
@@ -57,7 +56,6 @@ def forward_pass(layers: Dict[str, Operation]):
     layers['dense_1'].run()
     layers['relu'].run()
     layers['dense_2'].run()
-    layers['softmax'].run()
     layers['loss'].run()
     layers['reduce_sum'].run()
 
@@ -105,18 +103,16 @@ forward_pass(implicit_model)
 backward_pass(implicit_model, 'reduce_sum', 'conv_1')
 grads = implicit_model['gradients'].output.values[0][implicit_model['input_data'].output].values
 
+print('shapes:')
 print(num_grads.shape)
 print(grads.shape)
 print()
 
 grads_error = np.abs(num_grads.ravel() - grads.ravel())
 
-print(num_grads.flatten())
-print()
-print(grads.flatten())
-print()
 
-print(grads_error)
-print()
-print(np.all(grads_error < EPSILON))
-print()
+print('flattened num_grads:\n', num_grads.ravel(), '\n')
+print('flattened grads:\n', grads.ravel(), '\n')
+
+print('grads error:\n', grads_error, '\n')
+print('is analytical gradients correct?', np.all(grads_error < EPSILON), '\n')

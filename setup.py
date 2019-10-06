@@ -6,10 +6,10 @@ with open('README.md', 'r') as fs:
 
 setup(
     name='edunet',
-    version='1.0.0-alpha.0',
+    version='1.3.0-alpha.0',
     author='Matas Gumbinas',
     author_email='matas.gumbinas@gmail.com',
-    description='Edunet. Numpy based educational neural networks modeling framework - from scratch.',
+    description='Numpy based educational neural networks modeling framework - from scratch.',
     long_description=long_description,
     long_description_content_type='text/markdown',
     license='MIT',
