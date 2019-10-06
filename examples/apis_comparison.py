@@ -185,8 +185,7 @@ def high_level_api():
     sigmoid_1 = graph.add(net.Sigmoid(dense_2))
     loss = graph.add(net.SquaredDistance(sigmoid_1, input_labels))
     reduce_sum = graph.add(net.ReduceSum(loss, 0))
-    minimize_op = graph.add(net.MomentumOptimizer(LEARNING_RATE, 0.1).minimize(reduce_sum))
-    # minimize_op = graph.add(net.GradientDescentOptimizer(LEARNING_RATE).minimize(reduce_sum))
+    minimize_op = graph.add(net.GradientDescentOptimizer(LEARNING_RATE).minimize(reduce_sum))
 
     flow = net.Flow(graph)
 
@@ -216,8 +215,9 @@ def timeit(callback: callable) -> float:
     return delta_time
 
 
-# print('\nRunning low-level api...')
-# print('Done. Completed in', timeit(low_level_api), 'seconds.')
+print('\nRunning low-level api...')
+print('Done. Completed in', timeit(low_level_api), 'seconds.')
 
 print('\nRunning high-level api...')
 print('Done. Completed in', timeit(high_level_api), 'seconds.')
+
